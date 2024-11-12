@@ -1,0 +1,4 @@
+Please cite this library if you are using it in academic work!
+
+Also consider getting in touch to discuss co-authorship of publications. I can help adapt the library to specific needs and requirements,
+and I am also happy to participate in the research.
