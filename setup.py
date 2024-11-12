@@ -33,7 +33,10 @@ setup(
         "numpy==1.22.3",
         "pandas~=1.5.3",
         "tqdm",
-        "jupyter"
+        "jupyter",
+        "scikit-learn",
+        "transformers",
+        "torch"
     ],
     python_requires='>=3.9, <3.10',  # Allows all Python 3.9.x versions
     setup_requires=[
