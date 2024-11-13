@@ -1,14 +1,16 @@
 import os
 import json
+import pandas as pd
+import requests
+import warnings
+
+# Suppress FutureWarnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 from tqdm import tqdm
-import pandas as pd
-
-import requests
-
 from .system_prompt import system_prompt
 from .filtering import *
-from .dictionary import no_social_groups as blacklist_words
+from .dictionary import no_social_groups as blacklist_words, groups as whitelist
 
 
 class SGA:
@@ -67,7 +69,7 @@ class SGA:
             return self.__get_social_groups(texts_or_text, include_implicit, embedding_based_filtering, filter_type,
                                             as_dataframe)
 
-    def __get_social_groups(self, texts, embedding_based_filtering, include_implicit, filter_type, as_dataframe):
+    def __get_social_groups(self, texts, include_implicit, embedding_based_filtering, filter_type, as_dataframe):
         headers = {
             "Authorization": f"Bearer {self.bearer_key}",
             "Content-Type": "application/json"
@@ -106,10 +108,29 @@ class SGA:
         else:
             results["explicit"] = results["explizit"]
 
+        ## apply whitelist
+        found_words = list(results.explicit.explode())  # Changed to_set() to to_list()
+        found_words = [x for x in found_words if isinstance(x, str)]
+        final_white_list = found_words + whitelist
+        final_white_list = [str(x).lower() for x in final_white_list]
+        final_white_list = [str(x).strip() for x in final_white_list]
+        final_white_list = [x for x in final_white_list if x != "nan"]
+        final_white_list = list(
+            set(final_white_list))  # This will now work as found_words no longer contains dictionaries]
+        if "nan" in final_white_list:
+            final_white_list.remove("nan")
+        if None in final_white_list:
+            final_white_list.remove(None)
+
+        results["text"] = texts
+        results["explicit"] = results["text"].apply(lambda x: x.lower())
+        results["explicit"] = results["explicit"].apply(lambda x: find_matches(x, final_white_list))
+
         # perform filtering
         if embedding_based_filtering or as_dataframe:
 
-            results["new_embeddings"] = convert_terms_to_embeddings(results["explicit"], use_cls_token=True)
+            results["new_embeddings"] = results["explicit"].apply(
+                lambda x: convert_terms_to_embeddings(x, use_cls_token=True))
 
             magic_white_list = ['soldiers', 'farmers', 'self-employed', 'care personnel', 'entrepreneurs',
                                 'university graduates', 'first-time voters', 'parents', 'women',
@@ -187,3 +208,12 @@ class SGA:
             return results["explicit"]
         else:
             return results[filter_type]
+
+
+# Function to find matches
+def find_matches(text, white_list):
+    if pd.isna(text):
+        return None
+    text_words = text.split()
+    matches = [word for word in white_list if word in text_words and str(word) not in blacklist_words]
+    return matches
