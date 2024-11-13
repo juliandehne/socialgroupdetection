@@ -6,11 +6,11 @@ import torch
 # Define the device - use GPU if available, otherwise use CPU
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-
 bert_model = "google-bert/bert-base-multilingual-cased"
 # bert_model = 'google-bert/bert-base-cased'
 tokenizer = BertTokenizer.from_pretrained(bert_model)
 model = BertModel.from_pretrained(bert_model).to(device)
+
 
 def convert_terms_to_embeddings(to_tokenize_list, use_cls_token=False):
     if to_tokenize_list is None or len(to_tokenize_list) == 0:
