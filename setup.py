@@ -21,10 +21,10 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/juliandehne/socialgroupdetection",
     author="Julian Dehne",
-    license="Apache 2.0",
+    license="MIT",
     classifiers=[
         "Intended Audience :: Developers",
-        "License :: OSI Approved :: Apache 2.0 License",
+        "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3.9",
         "Operating System :: OS Independent"
     ],
