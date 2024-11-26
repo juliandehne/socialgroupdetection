@@ -1,5 +1,7 @@
 import os
 import json
+
+import backoff
 import pandas as pd
 import requests
 import warnings
@@ -11,6 +13,7 @@ from tqdm import tqdm
 from .system_prompt import system_prompt
 from .filtering import *
 from .dictionary import no_social_groups as blacklist_words, groups as whitelist
+import time
 
 
 class SGA:
@@ -76,28 +79,8 @@ class SGA:
         }
 
         results = []
-        for text in texts:
-            data = {
-                "model": self.model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": text}
-                ],
-                "temperature": self.temperature,
-                "top_p": 0.15,
-            }
-            # Make the POST request
-            response = requests.post(self.url, headers=headers, json=data)
-            # Check if the request was successful
-            if response.status_code != 200:
-                return None  # Optionally, return the error response
-
-            response_data = response.json()
-            # Extract and return only the text response
-            result = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
-            # Remove markdown formatting (backticks and "json" label)
-            result = result.replace('```', "").replace('json', '').replace("\n", "")
-            result = json.loads(result)
+        for text in tqdm(texts):
+            result = self.__get_completion(headers, text)
             results.append(result)
 
         results = pd.DataFrame(results, columns=["explizit", "implicit", "sonstige"])
@@ -208,6 +191,45 @@ class SGA:
             return results["explicit"]
         else:
             return results[filter_type]
+
+    @backoff.on_exception(backoff.expo, Exception)
+    def __get_completion(self, headers, text):
+        empty_response = {'explizit': [], 'implizit': [], 'sonstige': []}
+
+        data = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": text}
+            ],
+            "temperature": self.temperature,
+            "top_p": 0.15,
+        }
+        # Make the POST request
+        response = requests.post(self.url, headers=headers, json=data)
+        # Check if the request was successful
+        if response.status_code == 500:
+            print("internal server error on the GWDG side")
+            return empty_response
+        if response.status_code == 429:
+            raise Exception('API response: {}'.format(response.status_code))
+        else:
+            if response.status_code != 200:
+                print(response)
+                return empty_response
+            else:
+                # catching formatting errors
+                try:
+                    response_data = response.json()
+                    # Extract and return only the text response
+                    result = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    # Remove markdown formatting (backticks and "json" label)
+                    result = result.replace('```', "").replace('json', '').replace("\n", "")
+                    result = json.loads(result)
+                    return result
+                except Exception as ex:
+                    print(ex)
+                    return empty_response
 
 
 # Function to find matches

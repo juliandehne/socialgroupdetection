@@ -36,7 +36,8 @@ setup(
         "jupyter",
         "scikit-learn",
         "transformers",
-        "torch"
+        "torch",
+        "backoff"
     ],
     python_requires='>=3.9, <3.10',  # Allows all Python 3.9.x versions
     setup_requires=[
